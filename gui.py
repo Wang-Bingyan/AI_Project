@@ -16,7 +16,7 @@ border_width = 40  # 边界的宽度
 size = 15 * line_width + 14 * grid_width + 2 * border_width  # 尺寸
 
 game_board = np.zeros([15, 15])  # 棋盘用numpy数组表示
-
+neighbourhood = np.zeros([15, 15])  # 邻域，用于缩小搜索范围
 
 # 绘制棋盘
 canvas = tk.Canvas(window, background='white', width=size, height=size)
@@ -32,9 +32,9 @@ def draw_pieces(_canvas, row, column, player):
     pos_x = border_width + line_width // 2 + 1 + (grid_width + line_width) * column
     pos_y = border_width + line_width // 2 + 1 + (grid_width + line_width) * row
     if player == 1:  # 白棋
-        _canvas.create_image(pos_x, pos_y, image=img_piece_white)
-    elif player == -1:  # 黑棋
         _canvas.create_image(pos_x, pos_y, image=img_piece_black)
+    elif player == -1:  # 黑棋
+        _canvas.create_image(pos_x, pos_y, image=img_piece_white)
 
 
 # 游戏胜负判定
@@ -55,8 +55,8 @@ def judge(board):
             elif (board_t[i][j: j + 5] == [-1, -1, -1, -1, -1]).all():
                 return -1
     # 对角线
-    for i in range(10):
-        for j in range(10):
+    for i in range(11):
+        for j in range(11):
             if board[i][j] == 1 and board[i + 1][j + 1] == 1 and board[i + 2][j + 2] == 1 \
                     and board[i + 3][j + 3] == 1 and board[i + 4][j + 4] == 1:
                 return 1
@@ -71,6 +71,14 @@ def judge(board):
                 return -1
     return 0
 
+def f(n):
+    if n < 0:
+        return 0
+    if n > size:
+        return size
+    else:
+        return n
+
 
 # 鼠标事件
 def onclick(event):
@@ -80,7 +88,22 @@ def onclick(event):
     if 0 <= column <= 14 and 0 <= row <= 14:
         if game_board[row][column] == 0:
             game_board[row][column] = 1  # 玩家行棋
+
+            # 更新邻域
+            try:
+                neighbourhood[f(row - 1)][f(column - 1)] = \
+                    neighbourhood[f(row)][f(column - 1)] = \
+                    neighbourhood[f(row + 1)][f(column - 1)] = \
+                    neighbourhood[f(row - 1)][f(column)] = \
+                    neighbourhood[f(row + 1)][f(column)] = \
+                    neighbourhood[f(row - 1)][f(column + 1)] = \
+                    neighbourhood[f(row)][f(column + 1)] = \
+                    neighbourhood[f(row + 1)][f(column + 1)] = 1
+            except:
+                pass
+
             draw_pieces(canvas, row, column, 1)  # 绘制棋子
+            window.update()
 
             # 判断胜负
             if judge(game_board) == 1:
@@ -91,10 +114,23 @@ def onclick(event):
                 sys.exit()
 
             # AI行棋
-            ai_row, ai_column = game_ai.ai_move(game_board)
-            assert 0 <= ai_row <= 14 and 0 <= ai_column <= 14
+            ai_row, ai_column = game_ai.ai_move(game_board, neighbourhood)
+            assert 0 <= ai_row <= 14 and 0 <= ai_column <= 14 and game_board[ai_row][ai_column] == 0
+            # 更新邻域
+            try:
+                neighbourhood[f(row - 1)][f(column - 1)] = \
+                    neighbourhood[f(row)][f(column - 1)] = \
+                    neighbourhood[f(row + 1)][f(column - 1)] = \
+                    neighbourhood[f(row - 1)][f(column)] = \
+                    neighbourhood[f(row + 1)][f(column)] = \
+                    neighbourhood[f(row - 1)][f(column + 1)] = \
+                    neighbourhood[f(row)][f(column + 1)] = \
+                    neighbourhood[f(row + 1)][f(column + 1)] = 1
+            except:
+                pass
             game_board[ai_row][ai_column] = -1
             draw_pieces(canvas, ai_row, ai_column, -1)
+            window.update()
 
             # 判断胜负
             if judge(game_board) == 1:
