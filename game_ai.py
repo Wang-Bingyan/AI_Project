@@ -3,63 +3,57 @@ import numpy as np
 
 # 评分表
 value_table = [
-
     # 成五
-    [[1, 1, 1, 1, 1], 60001],
+    [[1, 1, 1, 1, 1], 50000],
     [[-1, -1, -1, -1, -1], -50000],
 
     # 活四
-    [[0, 1, 1, 1, 1, 0], 4321],
-    [[0, -1, -1, -1, -1, 0], -4320],
+    [[0, 1, 1, 1, 1, 0], 10000],
+    [[0, -1, -1, -1, -1, 0], -10000],
 
     # 冲四
-    [[1, 1, 1, 1, 0], 1441],
-    [[-1, -1, -1, -1, 0], -1440],
-    [[0, 1, 1, 1, 1], 1441],
-    [[0, -1, -1, -1, -1], -1440],
-    [[1, 1, 0, 1, 1], 1441],
-    [[-1, -1, 0, -1, -1], -1440],
-    [[1, 0, 1, 1, 1], 1441],
-    [[-1, 0, -1, -1, -1], -1440],
-    [[1, 1, 1, 0, 1], 1441],
-    [[-1, -1, -1, 0, -1], -1440],
+    [[1, 1, 1, 1, 0], 5000],
+    [[-1, -1, -1, -1, 0], -5000],
+    [[0, 1, 1, 1, 1], 5000],
+    [[0, -1, -1, -1, -1], -5000],
+    [[1, 1, 0, 1, 1], 5000],
+    [[-1, -1, 0, -1, -1], -5000],
+    [[1, 0, 1, 1, 1], 5000],
+    [[-1, 0, -1, -1, -1], -5000],
+    [[1, 1, 1, 0, 1], 5000],
+    [[-1, -1, -1, 0, -1], -5000],
 
     # 活三
-    [[0, 1, 1, 1, 0], 721],
+    [[0, 1, 1, 1, 0], 720],
     [[0, -1, -1, -1, 0], -720],
-    [[0, 1, 1, 1, 0], 721],
+    [[0, 1, 1, 1, 0], 720],
     [[0, -1, -1, -1, 0], -720],
 
-    [[0, 1, 1, 0, 1, 0], 721],
+    [[0, 1, 1, 0, 1, 0], 720],
     [[0, -1, -1, 0, -1, 0], -720],
 
-    [[0, 1, 0, 1, 1, 0], 721],
+    [[0, 1, 0, 1, 1, 0], 720],
     [[0, -1, 0, -1, -1, 0], -720],
 
     # 活二
-    [[0, 0, 1, 1, 0, 0], 121],
-    [[0, 0, -1, -1, 0, 0], -120],
+    [[0, 1, 1, 0, 0], 120],
+    [[0, -1, -1, 0, 0], -120],
 
-    [[0, 0, 1, 0, 1, 0], 121],
+    [[0, 0, 1, 1, 0], 120],
+    [[0, 0, -1, -1, 0], -120],
+
+    [[0, 0, 1, 0, 1, 0], 120],
     [[0, 0, -1, 0, -1, 0], -120],
 
-    [[0, 1, 0, 1, 0, 0], 121],
+    [[0, 1, 0, 1, 0, 0], 120],
     [[0, -1, 0, -1, 0, 0], -120],
 
-    [[0, 0, 1, 0, 0], 21],
+    [[0, 0, 1, 0, 0], 20],
     [[0, 0, -1, 0, 0], -20],
 
-    [[0, 0, 1, 0, 0], 21],
+    [[0, 0, 1, 0, 0], 20],
     [[0, 0, -1, 0, 0], -20],
 ]
-
-
-# 评估一条线上的棋形
-def utility_line(line):
-    for entry in value_table:
-        if is_subsequence(line, entry[0]):
-            return entry[1]
-    return 0
 
 
 # 判断b是否为a的子列表
@@ -86,6 +80,22 @@ class AI(object):
         else:
             return n
 
+    # 评估一条线上的棋形
+    def utility_line(self, line):
+        # 把line转成元组，方便索引
+        line_tuple = tuple(line)
+
+        # 检查是否缓存了这条线的值
+        if line_tuple in self.__line_dict:
+            return self.__line_dict[line_tuple]
+
+        # 如果没有，则计算一次
+        for entry in value_table:
+            if is_subsequence(line, entry[0]):
+                self.__line_dict[line_tuple] = entry[1]  # 把计算结果储存起来
+                return entry[1]
+        return 0
+
     # 更新搜索域，每当落下一颗棋子时，将它周围的8个位置设为搜索域
     def update_search_area(self, old_search_area, row, column):
         new_search_area = old_search_area.copy()
@@ -108,12 +118,12 @@ class AI(object):
     # 更新存储的效用值
     # 每下一步棋，就有4条线上的效用值会发生变化
     def __update_utility(self, row, column):
-        u_r = utility_line(self.board[row])
-        u_c = utility_line(self.board[:, column])
+        u_r = self.utility_line(self.board[row])
+        u_c = self.utility_line(self.board[:, column])
         # 对角线真烦人
-        u_d1 = utility_line(self.board.diagonal(offset=column - row))
+        u_d1 = self.utility_line(self.board.diagonal(offset=column - row))
         mirror = np.fliplr(self.board)
-        u_d2 = utility_line(mirror.diagonal(offset=self.size - row - column - 1))
+        u_d2 = self.utility_line(mirror.diagonal(offset=self.size - row - column - 1))
 
         self.__utility_sum += u_r - self.__utility_row[row] + u_c - self.__utility_column[column] + \
             u_d1 - self.__utility_diagonal1[column - row + self.size - 1] + \
@@ -131,7 +141,7 @@ class AI(object):
     # min搜索
     def min_value(self, search_area, depth, alpha, beta):
         value = 114514
-        if depth == 1:
+        if depth == 1 or self.game_judge() != 0:
             return self.__get_utility()
         else:
             for i in range(self.size):
@@ -144,28 +154,22 @@ class AI(object):
                         new_search_area = self.update_search_area(search_area, i, j)
                         
                         # value = MIN(value, self.max_value(new_search_area, depth - 1, alpha, beta)
-                        tmp = self.max_value(new_search_area, depth - 1, alpha, beta)
+                        value = min(value, self.max_value(new_search_area, depth - 1, alpha, beta))
 
                         # 恢复board的状态
                         self.update_board(i, j, 0)
-
-                        if tmp < value:
-                            value = tmp
                         
                         # 剪枝
                         if value <= alpha:
-                            self.update_board(i, j, 0)
                             return value
 
-                        # 更新beta
-                        if value <= beta:
-                            beta = value
+                        beta = min(beta, value)
         return value
 
     # max搜索
     def max_value(self, search_area, depth, alpha, beta):
         value = -114514
-        if depth == 1:
+        if depth == 1 or self.game_judge() != 0:
             return self.__get_utility()
         else:
             for i in range(self.size):
@@ -176,23 +180,19 @@ class AI(object):
                         self.update_board(i, j, -1)
                         # 根据这一步棋，确定一个新的搜索域
                         new_search_area = self.update_search_area(search_area, i, j)
-                        
+
                         # value = MAX(value, self.min_value(new_search_area, depth - 1, alpha, beta)
-                        tmp = self.min_value(new_search_area, depth - 1, alpha, beta)
+                        value = max(value, self.min_value(new_search_area, depth - 1, alpha, beta))
 
                         # 恢复board的状态
                         self.update_board(i, j, 0)
-
-                        if tmp > value:
-                            value = tmp
                             
                         # 剪枝
                         if value >= beta:
                             return value
                         
                         # 更新alpha
-                        if value >= alpha:
-                            alpha = value
+                        alpha = max(alpha, value)
         return value
     
     # alpha-beta剪枝
@@ -224,6 +224,39 @@ class AI(object):
         print("===============================================")
         
         return row, column
+
+    def game_judge(self):
+        board_t = self.board.transpose()
+        board_mirror = np.flip(self.board, 0)
+        # 行与列
+        for i in range(15):
+            for j in range(11):
+                # 5个一行
+                if (self.board[i][j: j + 5] == [1, 1, 1, 1, 1]).all():
+                    return 1
+                elif (self.board[i][j: j + 5] == [-1, -1, -1, -1, -1]).all():
+                    return -1
+                # 5个一列
+                if (board_t[i][j: j + 5] == [1, 1, 1, 1, 1]).all():
+                    return 1
+                elif (board_t[i][j: j + 5] == [-1, -1, -1, -1, -1]).all():
+                    return -1
+        # 对角线
+        for i in range(11):
+            for j in range(11):
+                if self.board[i][j] == 1 and self.board[i + 1][j + 1] == 1 and self.board[i + 2][j + 2] == 1 \
+                        and self.board[i + 3][j + 3] == 1 and self.board[i + 4][j + 4] == 1:
+                    return 1
+                elif self.board[i][j] == -1 and self.board[i + 1][j + 1] == -1 and self.board[i + 2][j + 2] == -1 \
+                        and self.board[i + 3][j + 3] == -1 and self.board[i + 4][j + 4] == -1:
+                    return -1
+                if board_mirror[i][j] == 1 and board_mirror[i + 1][j + 1] == 1 and board_mirror[i + 2][j + 2] == 1 \
+                        and board_mirror[i + 3][j + 3] == 1 and board_mirror[i + 4][j + 4] == 1:
+                    return 1
+                elif board_mirror[i][j] == -1 and board_mirror[i + 1][j + 1] == -1 and board_mirror[i + 2][j + 2] == -1 \
+                        and board_mirror[i + 3][j + 3] == -1 and board_mirror[i + 4][j + 4] == -1:
+                    return -1
+        return 0
         
     # AI接口
     def ai_move(self):
@@ -245,3 +278,6 @@ class AI(object):
         self.__utility_diagonal1 = np.zeros([2 * self.size - 1], int)
         self.__utility_diagonal2 = np.zeros([2 * self.size - 1], int)
         self.__utility_sum = 0
+
+        # 缓存效用值，避免计算第二次
+        self.__line_dict = {}
