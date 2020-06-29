@@ -28,7 +28,7 @@ class Game(object):
         self.canvas.pack()
         self.canvas.bind('<Button-1>', self.onclick)
 
-        self.game_board = np.zeros([15, 15])  # 棋盘用numpy数组表示
+        self.game_board = np.zeros([15, 15], int)  # 棋盘用numpy数组表示
         self.ai = game_ai.AI(self.game_board)  # AI初始化
 
     # 绘制棋子，row和col代表棋子所在的列，player=1代表黑棋，player=-1代表白棋
@@ -42,7 +42,7 @@ class Game(object):
 
     # 玩家行棋一步，开始一个回合
     def round(self, player_row, player_column):
-        self.game_board[player_row][player_column] = 1  # 更新棋盘
+        self.ai.update_board(player_row, player_column, 1)  # 更新棋盘
         self.draw_pieces(player_row, player_column, 1)  # 画出玩家的棋子
         self.window.update()  # 刷新屏幕
 
@@ -54,13 +54,15 @@ class Game(object):
             win_message(-1)
             sys.exit()
 
-        self.ai.update_search_area(player_row, player_column)  # 更新AI的搜索域
-        self.ai.update_utility(player_row, player_column)  # 更新AI的效用值
+        # 更新AI的搜索域
+        self.ai.search_area = self.ai.update_search_area(self.ai.search_area, player_row, player_column)
 
+        # AI行棋
         ai_row, ai_column = self.ai.ai_move()
-        # 确定一下是否下到了合法的位置
+        # 确认一下是否下到了合法的位置
         assert 0 <= ai_row <= 14 and 0 <= ai_column <= 14 and self.game_board[ai_row][ai_column] == 0
-        self.game_board[ai_row][ai_column] = -1  # 更新棋盘
+
+        self.ai.update_board(ai_row, ai_column, -1)  # 更新棋盘
         self.draw_pieces(ai_row, ai_column, -1)  # 画出AI的棋子
         self.window.update()  # 刷新屏幕
 
@@ -72,8 +74,8 @@ class Game(object):
             win_message(-1)
             sys.exit()
 
-        self.ai.update_search_area(ai_row, ai_column)  # 更新AI的搜索域
-        self.ai.update_utility(ai_row, ai_column)  # 更新AI的效用值
+        # 更新AI的搜索域
+        self.ai.search_area = self.ai.update_search_area(self.ai.search_area, ai_row, ai_column)
 
     # 判断游戏胜负，1代表玩家胜利，-1代表电脑胜利，0代表无人胜利
     def game_judge(self):
@@ -127,7 +129,7 @@ def win_message(player):
     elif player == -1:
         tk.messagebox.showinfo("胜利", "AI胜利！")
 
-
+  
 if __name__ == "__main__":
     Game = Game()
     Game.start()
