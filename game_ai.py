@@ -141,36 +141,9 @@ class AI(object):
     # min搜索
     def min_value(self, search_area, depth, alpha, beta):
         value = 114514
+        row = column = 0
         if depth == 1 or self.game_judge() != 0:
-            return self.__get_utility()
-        else:
-            for i in range(self.size):
-                for j in range(self.size):
-                    if search_area[i][j] == 1 and self.board[i][j] == 0:
-
-                        # max走下一步棋
-                        self.update_board(i, j, 1)
-                        # 根据这一步棋，确定一个新的搜索域
-                        new_search_area = self.update_search_area(search_area, i, j)
-                        
-                        # value = MIN(value, self.max_value(new_search_area, depth - 1, alpha, beta)
-                        value = min(value, self.max_value(new_search_area, depth - 1, alpha, beta))
-
-                        # 恢复board的状态
-                        self.update_board(i, j, 0)
-                        
-                        # 剪枝
-                        if value <= alpha:
-                            return value
-
-                        beta = min(beta, value)
-        return value
-
-    # max搜索
-    def max_value(self, search_area, depth, alpha, beta):
-        value = -114514
-        if depth == 1 or self.game_judge() != 0:
-            return self.__get_utility()
+            return self.__get_utility(), 0, 0
         else:
             for i in range(self.size):
                 for j in range(self.size):
@@ -180,49 +153,61 @@ class AI(object):
                         self.update_board(i, j, -1)
                         # 根据这一步棋，确定一个新的搜索域
                         new_search_area = self.update_search_area(search_area, i, j)
+                        
+                        # value = MIN(value, self.max_value(new_search_area, depth - 1, alpha, beta)
+                        tmp, _, _ = self.max_value(new_search_area, depth - 1, alpha, beta)
+                        if tmp < value:
+                            value = tmp
+                            row = i
+                            column = j
+
+                        # 恢复board的状态
+                        self.update_board(i, j, 0)
+                        
+                        # 剪枝
+                        if value <= alpha:
+                            return value, row, column
+
+                        beta = min(beta, value)
+        return value, row, column
+
+    # max搜索
+    def max_value(self, search_area, depth, alpha, beta):
+        value = -114514
+        row = column = 0
+        if depth == 1 or self.game_judge() != 0:
+            return self.__get_utility(), 0, 0
+        else:
+            for i in range(self.size):
+                for j in range(self.size):
+                    if search_area[i][j] == 1 and self.board[i][j] == 0:
+
+                        # max走下一步棋
+                        self.update_board(i, j, 1)
+                        # 根据这一步棋，确定一个新的搜索域
+                        new_search_area = self.update_search_area(search_area, i, j)
 
                         # value = MAX(value, self.min_value(new_search_area, depth - 1, alpha, beta)
-                        value = max(value, self.min_value(new_search_area, depth - 1, alpha, beta))
+                        tmp, _, _ = self.min_value(new_search_area, depth - 1, alpha, beta)
+                        if tmp > value:
+                            value = tmp
+                            row = i
+                            column = j
 
                         # 恢复board的状态
                         self.update_board(i, j, 0)
                             
                         # 剪枝
                         if value >= beta:
-                            return value
+                            return value, row, column
                         
                         # 更新alpha
                         alpha = max(alpha, value)
-        return value
+        return value, row, column
     
     # alpha-beta剪枝
     def alpha_beta_search(self, depth):
-        
-        row = column = self.size // 2
-        value = 114514  # 初始化为正无穷
-
-        # 调试用变量: 一个存储所有位置的value的矩阵
-        value_board = np.full([self.size, self.size], np.nan)
-        
-        for i in range(self.size):
-            for j in range(self.size):
-                if self.search_area[i][j] == 1 and self.board[i][j] == 0:
-                    # 假设先在这个位置下一步
-                    self.update_board(i, j, -1)
-                    # 计算出此时的min_value
-                    tmp = self.min_value(self.search_area, depth, -1919810, 1919810)
-                    value_board[i][j] = tmp
-                    if tmp < value:
-                        value = tmp
-                        row = i
-                        column = j
-                    # 完成后，要把棋盘恢复原状
-                    self.update_board(i, j, 0)
-        # 调试
-        print("===============================================")
-        print(value_board)
-        print("===============================================")
-        
+        _, row, column = self.min_value(self.search_area, depth, -1919810, 1919810)
         return row, column
 
     def game_judge(self):
