@@ -1,72 +1,62 @@
 # 游戏AI
 import numpy as np
+import AhoCorasick
 
 # 评分表
-value_table = [
-    # 成五
-    [[1, 1, 1, 1, 1], 50000],
-    [[-1, -1, -1, -1, -1], -50000],
+value_table = {
+    # B - 黑棋，W - 白棋， O - 空位
 
-    # 活四
-    [[0, 1, 1, 1, 1, 0], 10000],
-    [[0, -1, -1, -1, -1, 0], -10000],
-
-    # 冲四
-    [[1, 1, 1, 1, 0], 5000],
-    [[-1, -1, -1, -1, 0], -5000],
-    [[0, 1, 1, 1, 1], 5000],
-    [[0, -1, -1, -1, -1], -5000],
-    [[1, 1, 0, 1, 1], 5000],
-    [[-1, -1, 0, -1, -1], -5000],
-    [[1, 0, 1, 1, 1], 5000],
-    [[-1, 0, -1, -1, -1], -5000],
-    [[1, 1, 1, 0, 1], 5000],
-    [[-1, -1, -1, 0, -1], -5000],
-
-    # 活三
-    [[0, 1, 1, 1, 0], 720],
-    [[0, -1, -1, -1, 0], -720],
-    [[0, 1, 1, 1, 0], 720],
-    [[0, -1, -1, -1, 0], -720],
-
-    [[0, 1, 1, 0, 1, 0], 720],
-    [[0, -1, -1, 0, -1, 0], -720],
-
-    [[0, 1, 0, 1, 1, 0], 720],
-    [[0, -1, 0, -1, -1, 0], -720],
-
-    # 活二
-    [[0, 1, 1, 0, 0], 120],
-    [[0, -1, -1, 0, 0], -120],
-
-    [[0, 0, 1, 1, 0], 120],
-    [[0, 0, -1, -1, 0], -120],
-
-    [[0, 0, 1, 0, 1, 0], 120],
-    [[0, 0, -1, 0, -1, 0], -120],
-
-    [[0, 1, 0, 1, 0, 0], 120],
-    [[0, -1, 0, -1, 0, 0], -120],
-
-    [[0, 0, 1, 0, 0], 20],
-    [[0, 0, -1, 0, 0], -20],
-
-    [[0, 0, 1, 0, 0], 20],
-    [[0, 0, -1, 0, 0], -20],
-]
+    # 成五（五个一线）
+    "BBBBB": 50000,
+    "WWWWW": -50000,
+    # 活四（有两个位置可以成五）
+    "OBBBBO": 10000,
+    "OWWWWO": -10000,
+    # 冲四（有一个位置可以成五）
+    "OBBBB": 5000,
+    "OWWWW": -5000,
+    "BBBBO": 5000,
+    "WWWWO": -5000,
+    "BOBBB": 5000,
+    "WOWWW": -5000,
+    "BBBOB": 5000,
+    "WWWOW": -5000,
+    "BBOBB": 5000,
+    "WWOWW": -5000,
+    # 活三（有两个位置可以变成活四）
+    "OBBBO": 2000,
+    "OWWWO": -2000,
+    # 有一个位置可以变成活四
+    "OBBOBO": 1800,
+    "OWWOWO": -1800,
+    # 冲三(有一个位置可以变成冲四)
+    "OBBB": 400,
+    "OWWW": -400,
+    "BBBO": 400,
+    "WWWO": -400,
+    "BOBOB": 400,
+    "WOWOW": -400,
+    # 活二(有两个位置可以变成活三)
+    "OBBOO": 400,
+    "OWWOO": -400,
+    "OOBBO": 400,
+    "OOWWO": -400,
+    "OOBOBO": 400,
+    "OOWOWO": -400,
+    "OBOBOO": 400,
+    "OWOWOO": -400,
+    # 活一
+    "OOBOO": 50,
+    "OOWOO": -50
+}
 
 
-# 判断b是否为a的子列表
-def is_subsequence(a, b):
-    for i in range(len(a) - len(b) + 1):
-        flag = True
-        for j in range(len(b)):
-            if a[i + j] != b[j]:
-                flag = False
-                break
-        if flag:
-            return True
-    return False
+def tostring(line):
+    d = {1: "B", -1: "W", 0: "O"}
+    s = ""
+    for i in line:
+        s += d[i]
+    return s
 
 
 class AI(object):
@@ -82,19 +72,25 @@ class AI(object):
 
     # 评估一条线上的棋形
     def utility_line(self, line):
-        # 把line转成元组，方便索引
-        line_tuple = tuple(line)
+        line_string = tostring(line)
 
         # 检查是否缓存了这条线的值
-        if line_tuple in self.__line_dict:
-            return self.__line_dict[line_tuple]
+        if line_string in self.__line_dict:
+            return self.__line_dict[line_string]
 
         # 如果没有，则计算一次
-        for entry in value_table:
-            if is_subsequence(line, entry[0]):
-                self.__line_dict[line_tuple] = entry[1]  # 把计算结果储存起来
-                return entry[1]
-        return 0
+        t = self.ac.search(line_string)
+        vs = [value_table[i] for i in t]
+        if not vs:
+            return 0
+        v1 = max(vs)
+        v2 = min(vs)
+        if abs(v1) > abs(v2):
+            value = v1
+        else:
+            value = v2
+        self.__line_dict[line_string] = value  # 储存结果
+        return value
 
     # 更新搜索域，每当落下一颗棋子时，将它周围的8个位置设为搜索域
     def update_search_area(self, old_search_area, row, column):
@@ -245,7 +241,7 @@ class AI(object):
         
     # AI接口
     def ai_move(self):
-        search_depth = 3  # 搜索深度
+        search_depth = 4  # 搜索深度
         return self.alpha_beta_search(search_depth)
 
     # 初始化
@@ -266,3 +262,6 @@ class AI(object):
 
         # 缓存效用值，避免计算第二次
         self.__line_dict = {}
+
+        # AC自动机初始化
+        self.ac = AhoCorasick.AhoCorasick(set(value_table.keys()))
